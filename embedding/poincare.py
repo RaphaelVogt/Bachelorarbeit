@@ -2,26 +2,31 @@ import torch
 from torchtyping import TensorType
 
 
-def distance(z1: TensorType[1], z2: TensorType[1], model="disk"):
+def riemann_distance(z_0: TensorType[1], z_1: TensorType[1], data: TensorType, model="disk"):
     """Computes the Riemann distance between two points in the hyperbolic model.
 
     Args:
-        z1 (complex tensor): 
-                    Specifies the first point.
-        z2 (complex tensor): 
-                    Specifies the second point.
+        data (complex tensor):
+                    Contains all data points.
+        z_0 (int): 
+                    Index of the first point.
+        z_1 (int): 
+                    Index of the second point.
     
     Returns:
         distance (float): 
                     The computed distance.
     """
     # ensure that numbers are complex
-    if z1.dtype is not torch.complex64 or z2.dtype is not torch.complex64:
+    if data.dtype is not torch.complex64:
         raise TypeError("Both numbers must be complex!")
     
+    z0 = data[z_0]
+    z1 = data[z_1]
+    
     if model == "disk":
-        return torch.log((torch.norm(1 - z1@torch.conj(z2)) + torch.norm(z1 - z2)) /
-                        (torch.norm(1 - z1@torch.conj(z2)) - torch.norm(z1 - z2)))
+        return torch.log((torch.norm(1 - z0@torch.conj(z1)) + torch.norm(z0 - z1)) /
+                        (torch.norm(1 - z0@torch.conj(z1)) - torch.norm(z0 - z1)))
     
     elif model == "plane":
         raise NotImplementedError()
