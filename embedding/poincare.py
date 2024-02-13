@@ -1,172 +1,134 @@
 import torch
+import math
 from torchtyping import TensorType
+from matplotlib import pyplot as plt
 
 
-def riemann_distance(z_0: TensorType[1], z_1: TensorType[1], data: TensorType, model="disk"):
-    """Computes the Riemann distance between two points in the hyperbolic model.
+class PoincareDisk:
+    # get data from tensor, create random points on disk, riemann distance, geodesic, distance_center, moebius, exp_map
+    def __init__(self):
+        self._data_points = None
 
-    Args:
-        data (complex tensor):
-                    Contains all data points.
-        z_0 (int): 
-                    Index of the first point.
-        z_1 (int): 
-                    Index of the second point.
+
+    @property
+    def data_points(self):
+        return self._data_points
+
+
+    def from_tensor(self, data: TensorType["number of points"]):
+        """ Loads the data points from a torch tensor.
+
+        Args:
+            data (complex tensor):
+                            torch.tensor containing the data points on the Poincare Disk.
+        """
+        if data.dtype is not torch.complex64:
+            raise TypeError("The input tensor must be complex!")
+        
+        if not torch.all(torch.abs(data) < 1):
+            raise ValueError("Not all Points lie inside the Poincare Disk!")
+        
+        self._data_points = data
+
+
+    def sample_random(self, num_points: int, radius: int=1):
+        """ Sample random points inside the Poincare Disk using: https://mathworld.wolfram.com/DiskPointPicking.html.
+
+        Args:
+            num_points (int):
+                            Number of points that get sampled.
+            radius (int):
+                            Radius of circle inside the Points are sampled. Standard is 1.
+        """
+        r = torch.rand(num_points) * radius
+        theta = torch.rand(num_points) * 2*math.pi
+        
+        reals = torch.sqrt(r) * torch.cos(theta)
+        imags = torch.sqrt(r) * torch.sin(theta)
+
+        self._data_points = torch.complex(reals, imags)
+
+
+    def visualize(self, size: int, circle=False):
+        """ Visualize the data points.
+
+        Args:
+            size (int):
+                            The size of the pyplot figure.
+            circle (bool):
+                            Specifies if the circle partial D gets also plotted.
+        """
+        plt.figure(figsize=(size, size))
+        plt.scatter(self._data_points.real, self._data_points.imag, color="peru", s=5*size)
+        if circle:
+            x_sphere = torch.cos(torch.linspace(0, 2 * math.pi, 1000))
+            y_sphere = torch.sin(torch.linspace(0, 2 * math.pi, 1000))
+            plt.plot(x_sphere, y_sphere)
+        plt.axis("off")
+        plt.show()
+
+
+    def riemann_distance(self, index_0: int, index_1: int):
+        """ Computes the Riemann distance between two points in teh disk.
+
+        Args:
+            index_0 (int):
+                            Index of teh first point.
+            index_1 (int):
+                            Index of the second point.
+
+        Returns:
+            distance (float):
+                            Distance between the points.
+        """
+        z_0 = self.data_points[index_0]
+        z_1 = self.data_points[index_1]
+
+        return torch.log((torch.norm(1 - z_0*torch.conj(z_1)) + torch.norm(z_0 - z_1)) /
+                        (torch.norm(1 - z_0*torch.conj(z_1)) - torch.norm(z_0 - z_1)))
     
-    Returns:
-        distance (float): 
-                    The computed distance.
-    """
-    # ensure that numbers are complex
-    if data.dtype is not torch.complex64:
-        raise TypeError("Both numbers must be complex!")
-    
-    z0 = data[z_0]
-    z1 = data[z_1]
-    
-    if model == "disk":
-        return torch.log((torch.norm(1 - z0@torch.conj(z1)) + torch.norm(z0 - z1)) /
-                        (torch.norm(1 - z0@torch.conj(z1)) - torch.norm(z0 - z1)))
-    
-    elif model == "plane":
-        raise NotImplementedError()
 
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
+    def distance_center(self, index: int):
+        """Computes the hyperbolic Riemannian Distance to the center.
 
-
-def geodesic(z1: TensorType[1], z2: TensorType[1], t, model="disk"):
-    """Computes the geodesic, which is the infimum over all curves between the points.y
-
-    Args:
-        z1 (complex tensor): 
-                    Specifies the first point.
-        z2 (complex tensor): 
-                    Specifies the second point.
-    
-    Returns:
-        geodesic (complex tensor): 
-                    The complex values describing the geodesic.
-    """
-    # ensure that numbers are complex
-    if z1.dtype is not torch.complex64 or z2.dtype is not torch.complex64:
-        raise TypeError("Both numbers must be complex!")
-    
-    # introduce the operations on the poincare disk
-    circ_plus = lambda a, z : (a + z) / (1 + torch.conj(a)@z)
-    circ_cross = lambda v, t : torch.tanh(t*torch.atanh(torch.norm(v))) * (v / torch.norm(v))
-
-    if model == "disk":
-        return circ_plus(z1, circ_cross(circ_plus(-z1, z2), t))
-    
-    elif model == "plane":
-        raise NotImplementedError()
-
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
-
-
-def distance_center(z: TensorType[1], model="disk"):
-    """Computes the hyperbolic Riemannian Distance to the center.
-
-    Args:
-        z1 (complex tensor): 
-                    Specifies the point.
-    
-    Returns:
-        distance (float): 
-                    The computed distance.
-    """
-    # ensure that numbers are complex
-    if z.dtype is not torch.complex64:
-        raise TypeError("The number must be complex!")
-    
-    # compute distance on poincare disk
-    if model == "disk":
+        Args:
+            index (int): 
+                        Index of the point.
+        
+        Returns:
+            distance (float): 
+                        The computed distance.
+        """
+        z = self._data_points[index]
         return torch.log((1 + z.abs()) / (1 - z.abs()))
     
-    elif model == "plane":
-        raise NotImplementedError()
 
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
+    def moebius(self, index_0: int, index_1: int):
+        """A Möbius transformation that sends p (index_0) to the center and is distance preserving.
+
+        Args:
+            index_0 (int):
+                        Specifies the point that gets distance preserving transformed.
+            index_1 (int): 
+                        Specifies the point that gets sent to the center.
+        """
+        z = self._data_points[index_0]
+        p = self._data_points[index_1]
+
+        self._data_points[index_0] = (z - p) / (1 - torch.conj(p)*z)
+        self._data_points[index_1] = 0 + 0j
+
     
+    def exp_map(self, index: int, v: TensorType[1]):
+        """Computes the exponential map on the Poincaré Disk.
 
-def moebius(z: TensorType[1], p: TensorType[1], model="disk"):
-    """A Möbius transformation that sends p to the center and is distance preserving.
-
-    Args:
-        z (complex tensor): 
-                    Specifies the point that gets transformed.
-        p (complex tensor): 
-                    Specifies the point which is sent to teh center by the transformation.
-    
-    Returns:
-        distance (float): 
-                    The transformed point z.
-    """
-    # ensure that numbers are complex
-    if z.dtype is not torch.complex64 or p.dtype is not torch.complex64:
-        raise TypeError("Both numbers must be complex!")
-    
-    if model == "disk":
-        return (z - p) / (1 - torch.conj(p)*z)
-    
-    elif model == "plane":
-        raise NotImplementedError()
-
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
-    
-    
-def exp_map(z: TensorType[1], v: TensorType[1], model="disk"):
-    """Computes the exponential map on the Poincaré Disk.
-
-    Args:
-        z (complex tensor): 
-                    The starting point on the hyperbolic model.
-        v (complex tensor):
-                    The Tangent vector.
-
-    Returns:
-        z_new (complex tensor):
-                    The pont on the hyperbolic model after the map.
-    """
-    # ensure that numbers are complex
-    if z.dtype is not torch.complex64 or z.dtype is not torch.complex64:
-        raise TypeError("Both numbers must be complex!")
-    
-    # introduce the operations on the poincare disk
-    circ_cross = lambda v, t : torch.tanh(t*torch.atanh(torch.norm(v))) * (v / torch.norm(v))
-
-    if model == "disk":
-        return circ_cross(z, (torch.tanh(torch.norm(v) / (1 - torch.norm(z)**2)) * (v / torch.norm(v))))
-    
-    elif model == "plane":
-        raise NotImplementedError()
-
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
-    
-
-def exp_map_2(z: TensorType[1], v: TensorType[1], model="disk"):
-    """Computes the exponential map on the Poincaré Disk.
-
-    Args:
-        z (complex tensor): 
-                    The starting point on the hyperbolic model.
-        v (complex tensor):
-                    The Tangent vector.
-
-    Returns:
-        z_new (complex tensor):
-                    The pont on the hyperbolic model after the map.
-    """
-    # ensure that numbers are complex
-    if z.dtype is not torch.complex64 or z.dtype is not torch.complex64:
-        raise TypeError("Both numbers must be complex!")
-    
-    if model == "disk":
+        Args:
+            index (int): 
+                        The starting point in the disk.
+            v (complex tensor):
+                        The Tangent vector.
+        """
+        z = self._data_points[index]
         theta = torch.angle(v)
         s = 2*torch.abs(v) / (1 - torch.abs(z)**2)
 
@@ -175,10 +137,4 @@ def exp_map_2(z: TensorType[1], v: TensorType[1], model="disk"):
 
         num = z + exp_i_theta + (z - exp_i_theta) * exp_minus_s
         den = 1 + torch.conj(z) * exp_i_theta + (1 - torch.conj(z) * exp_i_theta) * exp_minus_s
-        return num / den
-    
-    elif model == "plane":
-        raise NotImplementedError()
-
-    else:
-        raise NotImplementedError("The model must be the Poincare Disk ('disk') or Lobachevksy half plane('plane')")
+        self._data_points[index] = num / den
