@@ -69,7 +69,7 @@ class PoincareDisk:
 
 
     def riemann_distance(self, index_0: int, index_1: int):
-        """ Computes the Riemann distance between two points in teh disk.
+        """ Computes the Riemann distance between two points in the disk.
 
         Args:
             index_0 (int):
@@ -86,6 +86,11 @@ class PoincareDisk:
 
         return torch.log((torch.norm(1 - z_0*torch.conj(z_1)) + torch.norm(z_0 - z_1)) /
                         (torch.norm(1 - z_0*torch.conj(z_1)) - torch.norm(z_0 - z_1)))
+    
+
+    def riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
+        return torch.log((torch.abs(1 - points_0*torch.conj(points_1)) + torch.abs(points_0 - points_1)) /
+                        (torch.abs(1 - points_0*torch.conj(points_1)) - torch.abs(points_0 - points_1)))
     
 
     def distance_center(self, index: int):
