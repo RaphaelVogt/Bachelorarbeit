@@ -8,11 +8,15 @@ class PoincareDisk:
     # get data from tensor, create random points on disk, riemann distance, geodesic, distance_center, moebius, exp_map
     def __init__(self):
         self._data_points = None
-
+        self._num_points = 0
 
     @property
     def data_points(self):
         return self._data_points
+    
+    @property
+    def num_points(self):
+        return self._num_points
 
 
     def from_tensor(self, data: TensorType["number of points"]):
@@ -29,6 +33,7 @@ class PoincareDisk:
             raise ValueError("Not all Points lie inside the Poincare Disk!")
         
         self._data_points = data
+        self._num_points = data.shape[0]
 
 
     def sample_random(self, num_points: int, radius: int=1):
@@ -47,6 +52,7 @@ class PoincareDisk:
         imags = torch.sqrt(r) * torch.sin(theta)
 
         self._data_points = torch.complex(reals, imags)
+        self._num_points = num_points
 
 
     def visualize(self, size: int, circle=False):
@@ -73,7 +79,7 @@ class PoincareDisk:
 
         Args:
             index_0 (int):
-                            Index of teh first point.
+                            Index of the first point.
             index_1 (int):
                             Index of the second point.
 
@@ -89,8 +95,55 @@ class PoincareDisk:
     
 
     def riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
+        """ Computes the Riemann distance between multiple points in the disk.
+
+        Args:
+            points_0 (tensor):
+                            The first tensor with points.
+            points_1 (tensor):
+                            The second tensor with points.
+
+        Returns:
+            distance (tensor):
+                            Distance between the points.
+        """
         return torch.log((torch.abs(1 - points_0*torch.conj(points_1)) + torch.abs(points_0 - points_1)) /
                         (torch.abs(1 - points_0*torch.conj(points_1)) - torch.abs(points_0 - points_1)))
+    
+    def grad_riemann_distance(self, index_0: int, index_1: int):
+        """ Computes the gradient of the Riemann distance between two points in the disk.
+
+        Args:
+            index_0 (int):
+                            Index of the first point.
+            index_1 (int):
+                            Index of the second point.
+
+        Returns:
+            distance (float):
+                            Distance between the points.
+        """
+        z_0 = self.data_points[index_0]
+        z_1 = self.data_points[index_1]
+
+        return ((2 * (torch.conj(z_1) * (z_0 - z_1)**2 * (z_0 * torch.conj(z_1) - 1) + (z_1 - z_0) * (1 - z_0 * torch.conj(z_1))**2)) /
+                 (torch.abs(z_0 - z_1) * ((z_0 - z_1)**2 - (1 - z_0 * torch.conj(z_1))**2) * torch.abs(1 - z_0 * torch.conj(z_1))))
+    
+    def grad_riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
+        """ Computes the gradient of the Riemann distance between multiple points in the disk.
+
+        Args:
+            points_0 (tensor):
+                            The first tensor with points.
+            points_1 (tensor):
+                            The second tensor with points.
+
+        Returns:
+            distance (tensor):
+                            Distance between the points.
+        """
+        return ((2 * (torch.conj(points_1) * (points_0 - points_1)**2 * (points_0 * torch.conj(points_1) - 1) + (points_1 - points_0) * (1 - points_0 * torch.conj(points_1))**2)) /
+                 (torch.abs(points_0 - points_1) * ((points_0 - points_1)**2 - (1 - points_0 * torch.conj(points_1))**2) * torch.abs(1 - points_0 * torch.conj(points_1))))
     
 
     def distance_center(self, index: int):

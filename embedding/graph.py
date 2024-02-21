@@ -13,10 +13,14 @@ class Graph:
     @property
     def graph(self):
         return self._graph
+    
+    @property
+    def num_nodes(self):
+        return self._num_nodes
 
 
     def load_from_file(self, filename: str):
-        """ Loads the data from a specified file and creates the graph.
+        """Loads the data from a specified file and creates the graph.
 
         Args:
             filename (string):
@@ -72,7 +76,8 @@ class Graph:
                 num_children = round(distr.sample().item())
 
         if current_num_nodes == n:
-            return G
+            self._graph = G
+            return
 
         for i in range(n - current_num_nodes):
             G.addEdge(current_node, current_num_nodes)
@@ -96,3 +101,15 @@ class Graph:
         dijkstra = nk.distance.BidirectionalDijkstra(self._graph, index_0, index_1)
         dijkstra.run()
         return dijkstra.getDistance()
+
+
+    def distance_all(self):
+        """Computes the distances between all pairs of points.
+
+        Returns:
+            distances (np.array):
+                            Pairwise distances betwwen all nodes of the graph.
+        """
+        apsp = nk.distance.APSP(self._graph)
+        apsp.run()
+        return torch.tensor(apsp.getDistances())
