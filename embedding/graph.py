@@ -29,7 +29,7 @@ class Graph:
         raise NotImplementedError()
 
 
-    def create_random(self, n: int, min_b: int, max_b: int, mean: float, dev: float):
+    def create_random(self, num_nodes: int, min_b: int, max_b: int, mean: float, dev: float):
         """Generates a random graph, where the number of children at each node is sampled from a
        Gaussian distribution.
 
@@ -49,7 +49,7 @@ class Graph:
             G (nk.Graph): 
                         The created Graph.
         """
-        self._num_nodes = n
+        self._num_nodes = num_nodes
         self._mean = mean
         self._stddev = dev
 
@@ -58,14 +58,14 @@ class Graph:
         # create graph with only the root node
         current_num_nodes = 1
         current_node = 0
-        G = nk.Graph(n)
+        G = nk.Graph(num_nodes)
 
         num_children = round(distr.sample().item())
         while num_children < min_b or num_children > max_b:
             num_children = round(distr.sample().item())
 
         # add nodes according to distribution
-        while current_num_nodes + num_children <= n:
+        while current_num_nodes + num_children <= num_nodes:
             for i in range(num_children):
                 G.addEdge(current_node, current_num_nodes)
                 current_num_nodes += 1
@@ -75,11 +75,11 @@ class Graph:
             while num_children < 1 or num_children > max_b:
                 num_children = round(distr.sample().item())
 
-        if current_num_nodes == n:
+        if current_num_nodes == num_nodes:
             self._graph = G
             return
 
-        for i in range(n - current_num_nodes):
+        for i in range(num_nodes - current_num_nodes):
             G.addEdge(current_node, current_num_nodes)
             current_num_nodes += 1
 
