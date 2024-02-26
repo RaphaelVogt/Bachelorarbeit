@@ -78,59 +78,59 @@ class PoincareDisk:
         plt.show()
 
 
-    def riemann_distance(self, z_0: TensorType[1], z_1: TensorType[1]):
+    def riemann_distance(self, theta_0: TensorType[1], theta_1: TensorType[1]):
         """ Computes the Riemann distance between two points in the disk.
 
         Args:
-            z_0 (complex tensor):
+            theta_0 (complex tensor):
                             The first data point.
-            z_1 (complex tensor):
+            theta_1 (complex tensor):
                             The second data point.
 
         Returns:
             distance (float):
                             Distance between the points.
         """
-        return torch.log((torch.norm(1 - z_0*torch.conj(z_1)) + torch.norm(z_0 - z_1)) /
-                        (torch.norm(1 - z_0*torch.conj(z_1)) - torch.norm(z_0 - z_1)))
+        return torch.log((torch.norm(1 - theta_0*torch.conj(theta_1)) + torch.norm(theta_0 - theta_1)) /
+                        (torch.norm(1 - theta_0*torch.conj(theta_1)) - torch.norm(theta_0 - theta_1)))
 
 
-    def riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
+    def riemann_distance_vec(self, thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
         """ Computes the Riemannian distance between multiple points in the disk.
 
         Args:
-            points_0 (tensor):
+            thetas_0 (tensor):
                             The first tensor with points.
-            points_1 (tensor):
+            thetas_1 (tensor):
                             The second tensor with points.
 
         Returns:
             distance (tensor):
                             Distance between the points.
         """
-        num = torch.abs(1 - points_0*torch.conj(points_1)) + torch.abs(points_0 - points_1)
-        denum = torch.abs(1 - points_0*torch.conj(points_1)) - torch.abs(points_0 - points_1)
+        num = torch.abs(1 - thetas_0*torch.conj(thetas_1)) + torch.abs(thetas_0 - thetas_1)
+        denum = torch.abs(1 - thetas_0*torch.conj(thetas_1)) - torch.abs(thetas_0 - thetas_1)
         return torch.log(num / denum)
     
 
-    def grad_riemann_distance(self, theta, x):
+    def grad_riemann_distance(self, theta_0: TensorType[1], theta_1: TensorType[1]):
         """ Computes the gradient of the Riemann distance between two points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
 
         Args:
-            theta (complex tensor):
+            theta_0 (complex tensor):
                             The first data point.
-            x (complex tensor):
+            theta_1 (complex tensor):
                             The second data point.
 
         Returns:
             distance (float):
                             Distance between the points.
         """
-        alpha = 1 - torch.norm(theta)**2
-        beta = 1 - torch.norm(x)**2
-        gamma = 1 + (2 / (alpha*beta)) * torch.norm(theta - x)**2
+        alpha = 1 - torch.norm(theta_0)**2
+        beta = 1 - torch.norm(theta_1)**2
+        gamma = 1 + (2 / (alpha*beta)) * torch.norm(theta_0 - theta_1)**2
 
-        return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(x)**2 - 2*torch.dot(theta, x) + 1) / (alpha**2)) * theta - (x / alpha))
+        return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(theta_1)**2 - 2*torch.dot(theta_0, theta_1) + 1) / (alpha**2)) * theta_0 - (theta_1 / alpha))
     
 
     def grad_riemann_distance_vec(self, thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
@@ -153,35 +153,30 @@ class PoincareDisk:
         return (4 / (betas * torch.sqrt(gamma**2 - 1))) * (((torch.norm(thetas_1.unsqueeze(1), dim=-1)**2 - 2*thetas_0*thetas_1 + 1) / (alphas**2)) * thetas_0 - (thetas_1 / thetas_0))
     
 
-    def distance_center(self, index: int):
+    def distance_center(self, theta: TensorType[1]):
         """Computes the hyperbolic Riemannian Distance to the center.
 
         Args:
-            index (int): 
-                        Index of the point.
+            theta_0 (complex tensor): 
+                        The point.
         
         Returns:
             distance (float): 
                         The computed distance.
         """
-        z = self._data_points[index]
-        return torch.log((1 + z.abs()) / (1 - z.abs()))
+        return torch.log((1 + theta.abs()) / (1 - theta.abs()))
     
 
-    def moebius(self, index_0: int, index_1: int):
+    def moebius(self, theta_0: TensorType[1], theta_1: TensorType[1]):
         """A Möbius transformation that sends p (index_0) to the center and is distance preserving.
 
         Args:
-            index_0 (int):
-                        Specifies the point that gets distance preserving transformed.
-            index_1 (int): 
-                        Specifies the point that gets sent to the center.
+            theta_0 (complex tensor):
+                        The point that gets distance preserving transformed.
+            theta_1 (complex tensor): 
+                        The point that gets sent to the center.
         """
-        z = self._data_points[index_0]
-        p = self._data_points[index_1]
-
-        self._data_points[index_0] = (z - p) / (1 - torch.conj(p)*z)
-        self._data_points[index_1] = 0 + 0j
+        return (theta_0 - theta_1) / (1 - torch.conj(theta_1)*theta_0)
 
     
     def exp_map(self, index: int, v: TensorType[1]):

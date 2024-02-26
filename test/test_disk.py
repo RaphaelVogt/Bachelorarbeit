@@ -46,7 +46,7 @@ class TestClass:
             check.is_true(torch.abs(point).item() <= 0.5)
 
     """
-    Test computation of Riemannian distance
+    Test computation of vectorized Riemannian distance
     """
     def test_distance(self):
         D = PoincareDisk()
@@ -60,7 +60,7 @@ class TestClass:
             torch.equal(distance, vectorized_distances[i])
 
     """
-    Test computation of gradient of Riemannian distance
+    Test computation of vectorized gradient of Riemannian distance
     """
     def test_grad_distance(self):
         D = PoincareDisk()
@@ -72,3 +72,17 @@ class TestClass:
         for i, j in zip(indices_0, indices_1):
             distance = D.grad_riemann_distance(D._data_points[i].unsqueeze(0), D._data_points[j].unsqueeze(0))
             torch.equal(distance, vectorized_distances[i])
+
+    """
+    Test computation of distance center and moebius transform
+    """
+    def test_dist_center_moebius(self):
+        D = PoincareDisk()
+        D.sample_random(100, 1)
+
+        indices_0 = torch.arange(0, 100)
+        indices_1 = torch.randperm(100)
+        for i, j in zip(indices_0, indices_1):
+            distance = D.riemann_distance(D._data_points[i], D._data_points[j])
+            distance_moeb = D.distance_center(D.moebius(D._data_points[i], D._data_points[j]))
+            torch.equal(distance, distance_moeb)
