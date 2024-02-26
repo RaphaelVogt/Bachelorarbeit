@@ -78,7 +78,8 @@ class PoincareDisk:
         plt.show()
 
 
-    def riemann_distance(self, theta_0: TensorType[1], theta_1: TensorType[1]):
+    @staticmethod
+    def riemann_distance(theta_0: TensorType[1], theta_1: TensorType[1]):
         """ Computes the Riemann distance between two points in the disk.
 
         Args:
@@ -95,7 +96,8 @@ class PoincareDisk:
                         (torch.norm(1 - theta_0*torch.conj(theta_1)) - torch.norm(theta_0 - theta_1)))
 
 
-    def riemann_distance_vec(self, thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
+    @staticmethod
+    def riemann_distance_vec(thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
         """ Computes the Riemannian distance between multiple points in the disk.
 
         Args:
@@ -113,7 +115,8 @@ class PoincareDisk:
         return torch.log(num / denum)
     
 
-    def grad_riemann_distance(self, theta_0: TensorType[1], theta_1: TensorType[1]):
+    @staticmethod
+    def grad_riemann_distance(theta_0: TensorType[1], theta_1: TensorType[1]):
         """ Computes the gradient of the Riemann distance between two points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
 
         Args:
@@ -133,7 +136,8 @@ class PoincareDisk:
         return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(theta_1)**2 - 2*torch.dot(theta_0, theta_1) + 1) / (alpha**2)) * theta_0 - (theta_1 / alpha))
     
 
-    def grad_riemann_distance_vec(self, thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
+    @staticmethod
+    def grad_riemann_distance_vec(thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
         """ Computes the gradient of the Riemann distance between multiple points in the disk.
 
         Args:
@@ -153,7 +157,8 @@ class PoincareDisk:
         return (4 / (betas * torch.sqrt(gamma**2 - 1))) * (((torch.norm(thetas_1.unsqueeze(1), dim=-1)**2 - 2*thetas_0*thetas_1 + 1) / (alphas**2)) * thetas_0 - (thetas_1 / thetas_0))
     
 
-    def distance_center(self, theta: TensorType[1]):
+    @staticmethod
+    def distance_center(theta: TensorType[1]):
         """Computes the hyperbolic Riemannian Distance to the center.
 
         Args:
@@ -167,7 +172,8 @@ class PoincareDisk:
         return torch.log((1 + theta.abs()) / (1 - theta.abs()))
     
 
-    def moebius(self, theta_0: TensorType[1], theta_1: TensorType[1]):
+    @staticmethod
+    def moebius(theta_0: TensorType[1], theta_1: TensorType[1]):
         """A Möbius transformation that sends p (index_0) to the center and is distance preserving.
 
         Args:
@@ -175,47 +181,63 @@ class PoincareDisk:
                         The point that gets distance preserving transformed.
             theta_1 (complex tensor): 
                         The point that gets sent to the center.
+
+        Returns:
+            transformed_theta (complex tensor):
+                        The transformed data point.
         """
         return (theta_0 - theta_1) / (1 - torch.conj(theta_1)*theta_0)
-
     
-    def exp_map(self, index: int, v: TensorType[1]):
-        """Computes the exponential map on the Poincaré Disk for a single data point.
+    
+    @staticmethod
+    def exp_map(theta: TensorType[1], v: TensorType[1]):
+        """Computes the exponential map on the Poincaré Disk for a single data point (https://arxiv.org/pdf/1804.01882.pdf).
 
         Args:
-            index (int): 
+            theta (complex tensor): 
                         The starting point in the disk.
             v (complex tensor):
                         The Tangent vector.
+
+        Returns:
+            new_theta (complex tensor):
+                        The data point after the mapping.
         """
-        z = self._data_points[index]
-        theta = torch.angle(v)
-        s = 2*torch.abs(v) / (1 - torch.abs(z)**2)
+        lambda_theta = 2 / (1 - torch.norm(theta)**2)
+        cosh_lambda_v = torch.cosh(lambda_theta * torch.norm(v))
+        sinh_lambda_v = torch.sinh(lambda_theta * torch.norm(v))
+        dot_theta_v = torch.dot(theta, v / torch.norm(v))
 
-        exp_i_theta = torch.exp(1j * theta)
-        exp_minus_s = torch.exp(-s)
+        num_0 = lambda_theta * (cosh_lambda_v + dot_theta_v * sinh_lambda_v)
+        denum_0 = 1 + (lambda_theta - 1) * cosh_lambda_v + lambda_theta * dot_theta_v * sinh_lambda_v
+        num_1 = (1 / torch.norm(v)) * sinh_lambda_v
+        denum_1 = 1 + (lambda_theta - 1) * cosh_lambda_v + lambda_theta * dot_theta_v * sinh_lambda_v
 
-        num = z + exp_i_theta + (z - exp_i_theta) * exp_minus_s
-        den = 1 + torch.conj(z) * exp_i_theta + (1 - torch.conj(z) * exp_i_theta) * exp_minus_s
-        return  num / den
+        return (num_0 / denum_0) * theta + (num_1 / denum_1) * v
 
 
-    def exp_map_vec(self, index_start: int, index_end: int, v: TensorType[1]):
+    @staticmethod
+    def exp_map_vec(thetas: TensorType["Number of elements"], vs: TensorType["Number of elements"]):
         """Computes the exponential map on the Poincaré Disk for multiple data points.
 
         Args:
-            index (int): 
-                        The starting point in the disk.
-            v (complex tensor):
-                        The Tangent vector.
+            thetas (complex tensor): 
+                        The starting points in the disk.
+            vs (complex tensor):
+                        The Tangent vectors.
+
+        Returns:
+            new_thetas (complex tensor):
+                        The data points after the mapping.
         """
-        batch = self._data_points[index_start:index_end]
-        theta = torch.angle(v)
-        s = 2*torch.abs(v) / (1 - torch.abs(batch)**2)
+        lambdas_theta = 2 / (1 - torch.norm(thetas.unsqueeze(1), dim=-1)**2)
+        cosh_lambdas_v = torch.cosh(lambdas_theta * torch.norm(vs.unsqueeze(1), dim=-1))
+        sinh_lambdas_v = torch.sinh(lambdas_theta * torch.norm(vs.unsqueeze(1), dim=-1))
+        dot_thetas_v = thetas * (vs / torch.norm(vs.unsqueeze(1), dim=-1))
 
-        exp_i_theta = torch.exp(1j * theta)
-        exp_minus_s = torch.exp(-s)
+        nums_0 = lambdas_theta * (cosh_lambdas_v + dot_thetas_v * sinh_lambdas_v)
+        denums_0 = 1 + (lambdas_theta - 1) * cosh_lambdas_v + lambdas_theta * dot_thetas_v * sinh_lambdas_v
+        nums_1 = (1 / torch.norm(vs.unsqueeze(1), dim=-1)) * sinh_lambdas_v
+        denums_1 = 1 + (lambdas_theta - 1) * cosh_lambdas_v + lambdas_theta * dot_thetas_v * sinh_lambdas_v
 
-        num = batch + exp_i_theta + (batch - exp_i_theta) * exp_minus_s
-        den = 1 + torch.conj(batch) * exp_i_theta + (1 - torch.conj(batch) * exp_i_theta) * exp_minus_s
-        return num / den
+        return (nums_0 / denums_0) * thetas + (nums_1 / denums_1) * vs
