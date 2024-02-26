@@ -138,7 +138,7 @@ class PoincareDisk:
 
     @staticmethod
     def grad_riemann_distance_vec(thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
-        """ Computes the gradient of the Riemann distance between multiple points in the disk.
+        """ Computes the gradient of the Riemann distance between multiple points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
 
         Args:
             thetas_0 (complex tensor):
@@ -218,7 +218,7 @@ class PoincareDisk:
 
     @staticmethod
     def exp_map_vec(thetas: TensorType["Number of elements"], vs: TensorType["Number of elements"]):
-        """Computes the exponential map on the Poincaré Disk for multiple data points.
+        """Computes the exponential map on the Poincaré Disk for multiple data points (https://arxiv.org/pdf/1804.01882.pdf).
 
         Args:
             thetas (complex tensor): 
