@@ -86,3 +86,16 @@ class TestClass:
             distance = D.riemann_distance(D._data_points[i], D._data_points[j])
             distance_moeb = D.distance_center(D.moebius(D._data_points[i], D._data_points[j]))
             torch.equal(distance, distance_moeb)
+
+    """
+    Test computation of exponential map
+    """
+    def test_exponential_map(self):
+        D = PoincareDisk()
+        D.sample_random(100, 1)
+
+        vs = torch.complex(torch.rand(100, dtype=torch.float64), torch.rand(100, dtype=torch.float64))
+        exp_maps = D.exp_map_vec(D._data_points, vs)
+        for i, v in enumerate(vs):
+            exp_map = D.exp_map(D._data_points[i].unsqueeze(0), v.unsqueeze(0))
+            torch.equal(exp_map, exp_maps[i])
