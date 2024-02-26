@@ -63,4 +63,12 @@ class TestClass:
     Test computation of gradient of Riemannian distance
     """
     def test_grad_distance(self):
-        ...
+        D = PoincareDisk()
+        D.sample_random(100, 1)
+
+        indices_0 = torch.arange(0, 100)
+        indices_1 = torch.randperm(100)
+        vectorized_distances = D.grad_riemann_distance_vec(D._data_points, D._data_points[indices_1])
+        for i, j in zip(indices_0, indices_1):
+            distance = D.grad_riemann_distance(D._data_points[i].unsqueeze(0), D._data_points[j].unsqueeze(0))
+            torch.equal(distance, vectorized_distances[i])

@@ -133,20 +133,24 @@ class PoincareDisk:
         return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(x)**2 - 2*torch.dot(theta, x) + 1) / (alpha**2)) * theta - (x / alpha))
     
 
-    def grad_riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
+    def grad_riemann_distance_vec(self, thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
         """ Computes the gradient of the Riemann distance between multiple points in the disk.
 
         Args:
-            points_0 (tensor):
+            thetas_0 (complex tensor):
                             The first tensor with points.
-            points_1 (tensor):
+            thetas_1 (complex tensor):
                             The second tensor with points.
 
         Returns:
             distance (tensor):
-                            Distance between the points.
+                            Distances between the points.
         """
-        ...
+        alphas = 1 - torch.norm(thetas_0.unsqueeze(1), dim=-1)
+        betas = 1 - torch.norm(thetas_1.unsqueeze(0), dim=-1)
+        gamma = 1 + (2 / (alphas*betas)) * torch.norm((thetas_0 - thetas_1).unsqueeze(1), dim=-1)**2
+
+        return (4 / (betas * torch.sqrt(gamma**2 - 1))) * (((torch.norm(thetas_1.unsqueeze(1), dim=-1)**2 - 2*thetas_0*thetas_1 + 1) / (alphas**2)) * thetas_0 - (thetas_1 / thetas_0))
     
 
     def distance_center(self, index: int):
