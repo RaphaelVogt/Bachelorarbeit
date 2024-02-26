@@ -5,7 +5,6 @@ from matplotlib import pyplot as plt
 
 
 class PoincareDisk:
-    # get data from tensor, create random points on disk, riemann distance, geodesic, distance_center, moebius, exp_map
     def __init__(self):
         self._data_points = None
         self._num_points = 0
@@ -26,7 +25,7 @@ class PoincareDisk:
             data (complex tensor):
                             torch.tensor containing the data points on the Poincare Disk.
         """
-        if data.dtype is not torch.complex64:
+        if data.dtype is not torch.complex128:
             raise TypeError("The input tensor must be complex!")
         
         if not torch.all(torch.abs(data) < 1):
@@ -37,7 +36,7 @@ class PoincareDisk:
 
 
     def sample_random(self, num_points: int, radius: int=1):
-        """ Sample random points inside the Poincare Disk using: https://mathworld.wolfram.com/DiskPointPicking.html.
+        """ Sample random points inside the Poincare Disk using recection sampling.
 
         Args:
             num_points (int):
@@ -45,13 +44,18 @@ class PoincareDisk:
             radius (int):
                             Radius of circle inside the Points are sampled. Standard is 1.
         """
-        r = torch.rand(num_points) * radius
-        theta = torch.rand(num_points) * 2*math.pi
-        
-        reals = torch.sqrt(r) * torch.cos(theta)
-        imags = torch.sqrt(r) * torch.sin(theta)
+        enough_points = False
 
-        self._data_points = torch.complex(reals, imags)
+        while not enough_points:
+            reals = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
+            imags = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
+            data_points = torch.complex(reals, imags)
+            data_points = data_points[torch.abs(data_points) < radius]
+
+            if data_points.shape[0] >= num_points:
+                enough_points = True
+
+        self._data_points = data_points[:num_points]
         self._num_points = num_points
 
 
@@ -74,28 +78,25 @@ class PoincareDisk:
         plt.show()
 
 
-    def riemann_distance(self, index_0: int, index_1: int):
+    def riemann_distance(self, z_0: TensorType[1], z_1: TensorType[1]):
         """ Computes the Riemann distance between two points in the disk.
 
         Args:
-            index_0 (int):
-                            Index of the first point.
-            index_1 (int):
-                            Index of the second point.
+            z_0 (complex tensor):
+                            The first data point.
+            z_1 (complex tensor):
+                            The second data point.
 
         Returns:
             distance (float):
                             Distance between the points.
         """
-        z_0 = self.data_points[index_0]
-        z_1 = self.data_points[index_1]
-
         return torch.log((torch.norm(1 - z_0*torch.conj(z_1)) + torch.norm(z_0 - z_1)) /
                         (torch.norm(1 - z_0*torch.conj(z_1)) - torch.norm(z_0 - z_1)))
-    
+
 
     def riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
-        """ Computes the Riemann distance between multiple points in the disk.
+        """ Computes the Riemannian distance between multiple points in the disk.
 
         Args:
             points_0 (tensor):
@@ -107,28 +108,31 @@ class PoincareDisk:
             distance (tensor):
                             Distance between the points.
         """
-        return torch.log((torch.abs(1 - points_0*torch.conj(points_1)) + torch.abs(points_0 - points_1)) /
-                        (torch.abs(1 - points_0*torch.conj(points_1)) - torch.abs(points_0 - points_1)))
+        num = torch.abs(1 - points_0*torch.conj(points_1)) + torch.abs(points_0 - points_1)
+        denum = torch.abs(1 - points_0*torch.conj(points_1)) - torch.abs(points_0 - points_1)
+        return torch.log(num / denum)
     
-    def grad_riemann_distance(self, index_0: int, index_1: int):
-        """ Computes the gradient of the Riemann distance between two points in the disk.
+
+    def grad_riemann_distance(self, theta, x):
+        """ Computes the gradient of the Riemann distance between two points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
 
         Args:
-            index_0 (int):
-                            Index of the first point.
-            index_1 (int):
-                            Index of the second point.
+            theta (complex tensor):
+                            The first data point.
+            x (complex tensor):
+                            The second data point.
 
         Returns:
             distance (float):
                             Distance between the points.
         """
-        z_0 = self.data_points[index_0]
-        z_1 = self.data_points[index_1]
+        alpha = 1 - torch.norm(theta)**2
+        beta = 1 - torch.norm(x)**2
+        gamma = 1 + (2 / (alpha*beta)) * torch.norm(theta - x)**2
 
-        return ((2 * (torch.conj(z_1) * (z_0 - z_1)**2 * (z_0 * torch.conj(z_1) - 1) + (z_1 - z_0) * (1 - z_0 * torch.conj(z_1))**2)) /
-                 (torch.abs(z_0 - z_1) * ((z_0 - z_1)**2 - (1 - z_0 * torch.conj(z_1))**2) * torch.abs(1 - z_0 * torch.conj(z_1))))
+        return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(x)**2 - 2*torch.dot(theta, x) + 1) / (alpha**2)) * theta - (x / alpha))
     
+
     def grad_riemann_distance_vec(self, points_0: TensorType["Number of elements"], points_1: TensorType["Number of elements"]):
         """ Computes the gradient of the Riemann distance between multiple points in the disk.
 
@@ -142,8 +146,7 @@ class PoincareDisk:
             distance (tensor):
                             Distance between the points.
         """
-        return ((2 * (torch.conj(points_1) * (points_0 - points_1)**2 * (points_0 * torch.conj(points_1) - 1) + (points_1 - points_0) * (1 - points_0 * torch.conj(points_1))**2)) /
-                 (torch.abs(points_0 - points_1) * ((points_0 - points_1)**2 - (1 - points_0 * torch.conj(points_1))**2) * torch.abs(1 - points_0 * torch.conj(points_1))))
+        ...
     
 
     def distance_center(self, index: int):
@@ -178,7 +181,7 @@ class PoincareDisk:
 
     
     def exp_map(self, index: int, v: TensorType[1]):
-        """Computes the exponential map on the Poincaré Disk.
+        """Computes the exponential map on the Poincaré Disk for a single data point.
 
         Args:
             index (int): 
@@ -195,4 +198,25 @@ class PoincareDisk:
 
         num = z + exp_i_theta + (z - exp_i_theta) * exp_minus_s
         den = 1 + torch.conj(z) * exp_i_theta + (1 - torch.conj(z) * exp_i_theta) * exp_minus_s
-        self._data_points[index] = num / den
+        return  num / den
+
+
+    def exp_map_vec(self, index_start: int, index_end: int, v: TensorType[1]):
+        """Computes the exponential map on the Poincaré Disk for multiple data points.
+
+        Args:
+            index (int): 
+                        The starting point in the disk.
+            v (complex tensor):
+                        The Tangent vector.
+        """
+        batch = self._data_points[index_start:index_end]
+        theta = torch.angle(v)
+        s = 2*torch.abs(v) / (1 - torch.abs(batch)**2)
+
+        exp_i_theta = torch.exp(1j * theta)
+        exp_minus_s = torch.exp(-s)
+
+        num = batch + exp_i_theta + (batch - exp_i_theta) * exp_minus_s
+        den = 1 + torch.conj(batch) * exp_i_theta + (1 - torch.conj(batch) * exp_i_theta) * exp_minus_s
+        return num / den

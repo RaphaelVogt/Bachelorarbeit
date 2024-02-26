@@ -49,6 +49,9 @@ class Graph:
             G (nk.Graph): 
                         The created Graph.
         """
+        if self._graph is not None:
+            raise PermissionError("The graph has already been created!")
+        
         self._num_nodes = num_nodes
         self._mean = mean
         self._stddev = dev
@@ -98,6 +101,9 @@ class Graph:
             distance (float):
                             Distance of shortest path between the nodes.
         """
+        if self._graph is None:
+            raise PermissionError("The graph has not yet been created!")
+
         dijkstra = nk.distance.BidirectionalDijkstra(self._graph, index_0, index_1)
         dijkstra.run()
         return dijkstra.getDistance()
@@ -110,6 +116,9 @@ class Graph:
             distances (np.array):
                             Pairwise distances betwwen all nodes of the graph.
         """
+        if self._graph is None:
+            raise PermissionError("The graph has not yet been created!")
+        
         apsp = nk.distance.APSP(self._graph)
         apsp.run()
         return torch.tensor(apsp.getDistances())
