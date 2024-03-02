@@ -59,7 +59,7 @@ class PoincareDisk:
         self._num_points = num_points
 
 
-    def visualize(self, size: int, circle=False):
+    def visualize(self, size: int, circle=False, numbers=False):
         """ Visualize the data points.
 
         Args:
@@ -67,13 +67,18 @@ class PoincareDisk:
                             The size of the pyplot figure.
             circle (bool):
                             Specifies if the circle partial D gets also plotted.
+            numbers (bool):
+                            Specifies if the points are numbered
         """
-        plt.figure(figsize=(size, size))
-        plt.scatter(self._data_points.real, self._data_points.imag, color="peru", s=5*size)
+        fig, ax = plt.subplots(figsize=(3, 3))
+        ax.scatter(self._data_points.real, self._data_points.imag, color="peru", s=5*size)
         if circle:
             x_sphere = torch.cos(torch.linspace(0, 2 * math.pi, 1000))
             y_sphere = torch.sin(torch.linspace(0, 2 * math.pi, 1000))
-            plt.plot(x_sphere, y_sphere)
+            ax.plot(x_sphere, y_sphere)
+        if numbers:
+            for i in range(self._num_points):
+                ax.text(self._data_points[i].real, self._data_points[i].imag, i)
         plt.axis("off")
         plt.show()
 
@@ -101,13 +106,13 @@ class PoincareDisk:
         """ Computes the Riemannian distance between multiple points in the disk.
 
         Args:
-            thetas_0 (tensor):
+            thetas_0 (complex tensor):
                             The first tensor with points.
-            thetas_1 (tensor):
+            thetas_1 (complex tensor):
                             The second tensor with points.
 
         Returns:
-            distance (tensor):
+            distances (tensor):
                             Distance between the points.
         """
         num = torch.abs(1 - thetas_0*torch.conj(thetas_1)) + torch.abs(thetas_0 - thetas_1)
@@ -117,7 +122,7 @@ class PoincareDisk:
 
     @staticmethod
     def grad_riemann_distance(theta_0: TensorType[1], theta_1: TensorType[1]):
-        """ Computes the gradient of the Riemann distance between two points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
+        """ Computes the gradient of the Riemann distance between two points in the disk.
 
         Args:
             theta_0 (complex tensor):
@@ -126,19 +131,17 @@ class PoincareDisk:
                             The second data point.
 
         Returns:
-            distance (float):
-                            Distance between the points.
+            grad_distance (float):
+                            Gradient of distance between the points.
         """
-        alpha = 1 - torch.norm(theta_0)**2
-        beta = 1 - torch.norm(theta_1)**2
-        gamma = 1 + (2 / (alpha*beta)) * torch.norm(theta_0 - theta_1)**2
-
-        return (4 / (beta * torch.sqrt(gamma**2 - 1))) * (((torch.norm(theta_1)**2 - 2*torch.dot(theta_0, theta_1) + 1) / (alpha**2)) * theta_0 - (theta_1 / alpha))
+        num = 2 * (torch.conj(theta_1) * (theta_0 - theta_1)**2 * (theta_0 * torch.conj(theta_1) - 1) + (theta_1 - theta_0) * (1 - theta_0 * torch.conj(theta_1))**2)
+        denum = torch.abs(theta_0 - theta_1) * ((theta_0 - theta_1)**2 - (1 - theta_0 * torch.conj(theta_1))**2) * torch.abs(1 - theta_0 * torch.conj(theta_1))
+        return num / denum
     
 
     @staticmethod
     def grad_riemann_distance_vec(thetas_0: TensorType["Number of elements"], thetas_1: TensorType["Number of elements"]):
-        """ Computes the gradient of the Riemann distance between multiple points in the disk (https://arxiv.org/pdf/1705.08039.pdf).
+        """ Computes the gradient of the Riemann distance between multiple points in the disk.
 
         Args:
             thetas_0 (complex tensor):
@@ -147,14 +150,31 @@ class PoincareDisk:
                             The second tensor with points.
 
         Returns:
-            distance (tensor):
-                            Distances between the points.
+            grad_distances (tensor):
+                            Gradient of distances between the points.
         """
-        alphas = 1 - torch.norm(thetas_0.unsqueeze(1), dim=-1)
-        betas = 1 - torch.norm(thetas_1.unsqueeze(0), dim=-1)
-        gamma = 1 + (2 / (alphas*betas)) * torch.norm((thetas_0 - thetas_1).unsqueeze(1), dim=-1)**2
+        num = 2 * (torch.conj(thetas_1) * (thetas_0 - thetas_1)**2 * (thetas_0 * torch.conj(thetas_1) - 1) + (thetas_1 - thetas_0) * (1 - thetas_0 * torch.conj(thetas_1))**2)
+        denum = torch.abs(thetas_0 - thetas_1) * ((thetas_0 - thetas_1)**2 - (1 - thetas_0 * torch.conj(thetas_1))**2) * torch.abs(1 - thetas_0 * torch.conj(thetas_1))
+        return num / denum
+    
 
-        return (4 / (betas * torch.sqrt(gamma**2 - 1))) * (((torch.norm(thetas_1.unsqueeze(1), dim=-1)**2 - 2*thetas_0*thetas_1 + 1) / (alphas**2)) * thetas_0 - (thetas_1 / thetas_0))
+    @staticmethod
+    def autograd_riemann_distance(theta_0: TensorType[1], theta_1: TensorType[1]):
+        """ Computes the gradient of the Riemann distance between two points in the disk using torch autograd.
+
+        Args:
+            theta_0 (complex tensor):
+                            The first data point.
+            theta_1 (complex tensor):
+                            The second data point.
+
+        Returns:
+            grad_distance (float):
+                            Gradient of distance between the points.
+        """
+        distance = PoincareDisk.riemann_distance(theta_0, theta_1)
+        distance.backward()
+        return theta_0.grad
     
 
     @staticmethod
@@ -191,7 +211,7 @@ class PoincareDisk:
     
     @staticmethod
     def exp_map(theta: TensorType[1], v: TensorType[1]):
-        """Computes the exponential map on the Poincaré Disk for a single data point (https://arxiv.org/pdf/1804.01882.pdf).
+        """Computes the exponential map on the Poincaré Disk for a single data point (https://theses.hal.science/tel-03708515v1/document).
 
         Args:
             theta (complex tensor): 
@@ -203,22 +223,20 @@ class PoincareDisk:
             new_theta (complex tensor):
                         The data point after the mapping.
         """
-        lambda_theta = 2 / (1 - torch.norm(theta)**2)
-        cosh_lambda_v = torch.cosh(lambda_theta * torch.norm(v))
-        sinh_lambda_v = torch.sinh(lambda_theta * torch.norm(v))
-        dot_theta_v = torch.dot(theta, v / torch.norm(v))
+        angle = torch.angle(v)
+        s = 2 * torch.abs(v) / (1 - torch.abs(theta) ** 2)
 
-        num_0 = lambda_theta * (cosh_lambda_v + dot_theta_v * sinh_lambda_v)
-        denum_0 = 1 + (lambda_theta - 1) * cosh_lambda_v + lambda_theta * dot_theta_v * sinh_lambda_v
-        num_1 = (1 / torch.norm(v)) * sinh_lambda_v
-        denum_1 = 1 + (lambda_theta - 1) * cosh_lambda_v + lambda_theta * dot_theta_v * sinh_lambda_v
+        exp_i_angle = torch.exp(1j * angle)
+        exp_minus_s = torch.exp(-s)
 
-        return (num_0 / denum_0) * theta + (num_1 / denum_1) * v
-
+        num = theta + exp_i_angle + (theta - exp_i_angle) * exp_minus_s
+        den = (1 + torch.conj(theta) * exp_i_angle + (1 - torch.conj(theta) * exp_i_angle) * exp_minus_s)
+        return num / den
+    
 
     @staticmethod
     def exp_map_vec(thetas: TensorType["Number of elements"], vs: TensorType["Number of elements"]):
-        """Computes the exponential map on the Poincaré Disk for multiple data points (https://arxiv.org/pdf/1804.01882.pdf).
+        """Computes the exponential map on the Poincaré Disk for multiple data points (https://theses.hal.science/tel-03708515v1/document).
 
         Args:
             thetas (complex tensor): 
