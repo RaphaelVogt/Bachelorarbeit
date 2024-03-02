@@ -60,9 +60,23 @@ class TestClass:
             torch.equal(distance, vectorized_distances[i])
 
     """
-    Test computation of vectorized gradient of Riemannian distance
+    Test computation of gradient of riemann distance
     """
     def test_grad_distance(self):
+        D = PoincareDisk()
+        D.sample_random(100, 1)
+
+        indices_0 = torch.arange(0, 100)
+        indices_1 = torch.randperm(100)
+        for i, j in zip(indices_0, indices_1):
+            grad_distance = D.grad_riemann_distance(D._data_points[i], D._data_points[j])
+            autograd_distance = D.autograd_riemann_distance(D._data_points[i].requires_grad_(True), D._data_points[j])
+            torch.equal(grad_distance, autograd_distance)
+
+    """
+    Test computation of vectorized gradient of Riemannian distance
+    """
+    def test_vec_grad_distance(self):
         D = PoincareDisk()
         D.sample_random(100, 1)
 
