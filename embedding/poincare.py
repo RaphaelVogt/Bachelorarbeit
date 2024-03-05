@@ -25,7 +25,7 @@ class PoincareDisk:
             data (complex tensor):
                             torch.tensor containing the data points on the Poincare Disk.
         """
-        if data.dtype is not torch.complex128:
+        if data.dtype is not torch.complex128 and data.dtype is not torch.complex64:
             raise TypeError("The input tensor must be complex!")
         
         if not torch.all(torch.abs(data) < 1):
@@ -35,20 +35,20 @@ class PoincareDisk:
         self._num_points = data.shape[0]
 
 
-    def sample_random(self, num_points: int, radius: int=1):
-        """ Sample random points inside the Poincare Disk using recection sampling.
+    def sample_random(self, num_points: int, radius: float=1):
+        """ Sample random points inside the Poincare Disk using rejection sampling.
 
         Args:
             num_points (int):
                             Number of points that get sampled.
-            radius (int):
+            radius (float):
                             Radius of circle inside the Points are sampled. Standard is 1.
         """
         enough_points = False
 
         while not enough_points:
-            reals = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
-            imags = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
+            reals = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float32) + radius
+            imags = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float32) + radius
             data_points = torch.complex(reals, imags)
             data_points = data_points[torch.abs(data_points) < radius]
 
@@ -59,7 +59,7 @@ class PoincareDisk:
         self._num_points = num_points
 
 
-    def visualize(self, size: int, circle=False, numbers=False):
+    def visualize(self, size: int, circle: bool=False, numbers: bool=False):
         """ Visualize the data points.
 
         Args:
@@ -112,13 +112,13 @@ class PoincareDisk:
                             The second tensor with points.
 
         Returns:
-            distances (tensor):
+            distances (float tensor):
                             Distance between the points.
         """
         num = torch.abs(1 - thetas_0*torch.conj(thetas_1)) + torch.abs(thetas_0 - thetas_1)
         denum = torch.abs(1 - thetas_0*torch.conj(thetas_1)) - torch.abs(thetas_0 - thetas_1)
         return torch.log(num / denum)
-    
+
 
     @staticmethod
     def grad_riemann_distance(theta_0: TensorType[1], theta_1: TensorType[1]):
@@ -150,7 +150,7 @@ class PoincareDisk:
                             The second tensor with points.
 
         Returns:
-            grad_distances (tensor):
+            grad_distances (float tensor):
                             Gradient of distances between the points.
         """
         num = 2 * (torch.conj(thetas_1) * (thetas_0 - thetas_1)**2 * (thetas_0 * torch.conj(thetas_1) - 1) + (thetas_1 - thetas_0) * (1 - thetas_0 * torch.conj(thetas_1))**2)
@@ -224,38 +224,11 @@ class PoincareDisk:
                         The data point after the mapping.
         """
         angle = torch.angle(v)
-        s = 2 * torch.abs(v) / (1 - torch.abs(theta) ** 2)
+        s = 2 * torch.norm(v) / (1 - torch.norm(theta) ** 2)
 
         exp_i_angle = torch.exp(1j * angle)
         exp_minus_s = torch.exp(-s)
 
         num = theta + exp_i_angle + (theta - exp_i_angle) * exp_minus_s
-        den = (1 + torch.conj(theta) * exp_i_angle + (1 - torch.conj(theta) * exp_i_angle) * exp_minus_s)
-        return num / den
-    
-
-    @staticmethod
-    def exp_map_vec(thetas: TensorType["Number of elements"], vs: TensorType["Number of elements"]):
-        """Computes the exponential map on the Poincaré Disk for multiple data points (https://theses.hal.science/tel-03708515v1/document).
-
-        Args:
-            thetas (complex tensor): 
-                        The starting points in the disk.
-            vs (complex tensor):
-                        The Tangent vectors.
-
-        Returns:
-            new_thetas (complex tensor):
-                        The data points after the mapping.
-        """
-        lambdas_theta = 2 / (1 - torch.norm(thetas.unsqueeze(1), dim=-1)**2)
-        cosh_lambdas_v = torch.cosh(lambdas_theta * torch.norm(vs.unsqueeze(1), dim=-1))
-        sinh_lambdas_v = torch.sinh(lambdas_theta * torch.norm(vs.unsqueeze(1), dim=-1))
-        dot_thetas_v = thetas * (vs / torch.norm(vs.unsqueeze(1), dim=-1))
-
-        nums_0 = lambdas_theta * (cosh_lambdas_v + dot_thetas_v * sinh_lambdas_v)
-        denums_0 = 1 + (lambdas_theta - 1) * cosh_lambdas_v + lambdas_theta * dot_thetas_v * sinh_lambdas_v
-        nums_1 = (1 / torch.norm(vs.unsqueeze(1), dim=-1)) * sinh_lambdas_v
-        denums_1 = 1 + (lambdas_theta - 1) * cosh_lambdas_v + lambdas_theta * dot_thetas_v * sinh_lambdas_v
-
-        return (nums_0 / denums_0) * thetas + (nums_1 / denums_1) * vs
+        denum = (1 + torch.conj(theta) * exp_i_angle + (1 - torch.conj(theta) * exp_i_angle) * exp_minus_s)
+        return num / denum
