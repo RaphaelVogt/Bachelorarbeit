@@ -34,7 +34,7 @@ class Graph:
        Gaussian distribution.
 
         Args:
-            n (int): 
+            num_nodes (int): 
                         Number of nodes for the final graph.
             min_b (int): 
                         Minimum nuber of children (branching factor).
@@ -43,11 +43,7 @@ class Graph:
             mean (float):
                         Mean of the Gaussian distribution.
             dev (float):
-                        Standard deviation of teh Gaussian distribution.
-    
-        Returns:
-            G (nk.Graph): 
-                        The created Graph.
+                        Standard deviation of the Gaussian distribution.
         """
         if self._graph is not None:
             raise PermissionError("The graph has already been created!")
@@ -75,7 +71,7 @@ class Graph:
 
             current_node += 1
             num_children = round(distr.sample().item())
-            while num_children < 1 or num_children > max_b:
+            while num_children < min_b or num_children > max_b:
                 num_children = round(distr.sample().item())
 
         if current_num_nodes == num_nodes:
@@ -98,7 +94,7 @@ class Graph:
             index_1 (int):
                             Index of second node.
         Returns:
-            distance (float):
+            distance (int):
                             Distance of shortest path between the nodes.
         """
         if self._graph is None:
@@ -113,8 +109,8 @@ class Graph:
         """Computes the distances between all pairs of points.
 
         Returns:
-            distances (np.array):
-                            Pairwise distances betwwen all nodes of the graph.
+            distances (torch.tensor):
+                            Pairwise distances between all nodes of the graph.
         """
         if self._graph is None:
             raise PermissionError("The graph has not yet been created!")
