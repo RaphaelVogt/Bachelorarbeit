@@ -35,11 +35,11 @@ def geodesic(z1: TensorType[1], z2: TensorType[1], t, model="disk"):
                     The complex values describing the geodesic.
     """
     # ensure that numbers are complex
-    if z1.dtype is not torch.complex64 or z2.dtype is not torch.complex64:
+    if (z1.dtype is not torch.complex64 or z2.dtype is not torch.complex64) and (z1.dtype is not torch.complex128 or z2.dtype is not torch.complex128):
         raise TypeError("Both numbers must be complex!")
     
     # introduce the operations on the poincare disk
-    circ_plus = lambda a, z : (a + z) / (1 + torch.conj(a)@z)
+    circ_plus = lambda a, z : (a + z) / (1 + torch.conj(a)*z)
     circ_cross = lambda v, t : torch.tanh(t*torch.atanh(torch.norm(v))) * (v / torch.norm(v))
 
     if model == "disk":
