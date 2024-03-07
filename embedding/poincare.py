@@ -224,11 +224,9 @@ class PoincareDisk:
                         The data point after the mapping.
         """
         angle = torch.angle(v)
-        s = 2 * torch.norm(v) / (1 - torch.norm(theta) ** 2)
+        e_i_angle = torch.exp(1j*angle)
+        e_frac = torch.exp((2*torch.norm(v)) / (1 - torch.norm(theta)**2))
 
-        exp_i_angle = torch.exp(1j * angle)
-        exp_minus_s = torch.exp(-s)
-
-        num = theta + exp_i_angle + (theta - exp_i_angle) * exp_minus_s
-        denum = (1 + torch.conj(theta) * exp_i_angle + (1 - torch.conj(theta) * exp_i_angle) * exp_minus_s)
+        num = (theta + e_i_angle) * e_frac + (theta - e_i_angle)
+        denum = (1 + torch.conj(theta)*e_i_angle) * e_frac + (1 - torch.conj(theta) * e_i_angle)
         return num / denum
