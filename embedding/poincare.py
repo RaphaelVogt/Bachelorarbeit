@@ -47,8 +47,8 @@ class PoincareDisk:
         enough_points = False
 
         while not enough_points:
-            reals = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float32) + radius
-            imags = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float32) + radius
+            reals = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
+            imags = (-radius - radius) * torch.rand(2*num_points, dtype=torch.float64) + radius
             data_points = torch.complex(reals, imags)
             data_points = data_points[torch.abs(data_points) < radius]
 
