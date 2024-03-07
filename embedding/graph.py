@@ -62,6 +62,7 @@ class Graph:
         num_children = round(distr.sample().item())
         while num_children < min_b or num_children > max_b:
             num_children = round(distr.sample().item())
+        num_children += 1
 
         # add nodes according to distribution
         while current_num_nodes + num_children <= num_nodes:
