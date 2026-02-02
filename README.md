@@ -5,11 +5,15 @@ Implementation of hyperbolic geometry for efficient embeddings of graph-based da
 ## 📌 Abstract
 Traditional Euclidean embeddings often struggle to represent hierarchical data without high distortion. This project utilizes **Riemannian geometry** and the **Poincaré disk model** to embed finite metric spaces, leveraging the fact that hyperbolic space volume grows exponentially with its radius. Additionally, different data initialization methods are proposed.
 
-## 🖼 Visualization of Exemplary Embeddings
+## 🖼 Visualization of Graph Embeddings
 
-![Bild 1](images/example-embedding1.png)
+**Embedding of a graph with 32 nodes. The branching factors are sampled from $N(2,1)$**  
 
-![Bild 2](images/example-embedding2.png)
+![Graph32](images/embedding-32-nodes.png)
+
+**Embedding of a graph with 64 nodes. The branching factors are sampled from $N(3,2)$**  
+
+![Graph64](images/embedding-64-nodes.png)
 
 ## 🚀 Key Features
 * **Manifold Optimization:** Custom implementation of RSGD to maintain points within the Poincaré manifold.
